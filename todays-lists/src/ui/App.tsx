@@ -136,6 +136,7 @@ export function App() {
       w.pending = null;
       w.busy = true;
       setSync('saving');
+      let retryIn = 400; // one tracked timer only; a network miss backs off a little
       try {
         await ref.set({ updatedAt: s.updatedAt || Date.now(), writer: DEVICE, state: s });
         setSync('synced');
@@ -143,7 +144,7 @@ export function App() {
         const code = (e as ClaudeError | null)?.code;
         if (code === 'unavailable') {
           if (!w.pending) w.pending = s;
-          setTimeout(() => flush(), 1200 + Math.random() * 1200);
+          retryIn = 1200 + Math.random() * 1200;
         } else if (
           code === 'invalid_argument' ||
           code === 'not_granted' ||
@@ -155,7 +156,8 @@ export function App() {
         } else setSync('error');
       } finally {
         w.busy = false;
-        if (w.pending && capRef.current.ref) w.timer = setTimeout(() => flush(), 400);
+        clearTimeout(w.timer);
+        if (w.pending && capRef.current.ref) w.timer = setTimeout(() => flush(), retryIn);
       }
     };
   }, [flush]);
