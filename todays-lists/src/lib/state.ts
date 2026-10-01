@@ -1,5 +1,5 @@
 import type { AppState, Item } from '../types';
-import { CATS0, DEFAULT_BASES, SEED_LACES } from '../data/catalog';
+import { CATS0, CHAINS, DEFAULT_BASES, SEED_LACES } from '../data/catalog';
 import { parseLace } from '../calc/laces';
 
 export const uid = (): string => Math.random().toString(36).slice(2, 8) + Date.now().toString(36).slice(-5);
@@ -42,6 +42,9 @@ const withIds = <T extends { id: string }>(v: unknown): T[] =>
     ? v.filter((x): x is T => !!x && typeof x === 'object' && typeof (x as T).id === 'string')
     : [];
 
+const strings = (v: unknown, fallback: string[]): string[] =>
+  Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string') : fallback;
+
 export function normalizeState(s: unknown): AppState {
   const d = seedState();
   if (!s || typeof s !== 'object' || (s as { v?: unknown }).v !== 2) return d;
@@ -54,9 +57,10 @@ export function normalizeState(s: unknown): AppState {
   if (!out.bases.length) out.bases = d.bases;
   if (!out.bases.some((b) => b.id === out.baseId)) out.baseId = out.bases[0].id;
   out.items = withIds(out.items);
-  if (!Array.isArray(out.shopCats)) out.shopCats = d.shopCats;
-  if (!Array.isArray(out.chains)) out.chains = d.chains;
-  if (!Array.isArray(out.picks)) out.picks = d.picks;
+  // String lists: drop anything that is not a string, and chain filters the app no longer knows.
+  out.shopCats = strings(out.shopCats, d.shopCats);
+  out.chains = strings(out.chains, d.chains).filter((k) => k in CHAINS);
+  out.picks = strings(out.picks, d.picks);
   if (!Array.isArray(out.custom)) out.custom = d.custom;
   if (!Array.isArray(out.aiStores)) out.aiStores = d.aiStores;
   if (!out.fixes || typeof out.fixes !== 'object') out.fixes = {};

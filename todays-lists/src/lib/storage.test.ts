@@ -126,6 +126,17 @@ describe('normalizeState', () => {
     expect(s.baseId).toBe('b1');
     expect(s.items).toEqual([]);
   });
+  it('drops chain filters the app no longer knows', () => {
+    const s = normalizeState({
+      v: 2,
+      chains: ['zumiez', 'gone-chain', 7],
+      picks: ['a', null],
+      shopCats: 'laces',
+    });
+    expect(s.chains).toEqual(['zumiez']);
+    expect(s.picks).toEqual(['a']);
+    expect(s.shopCats).toEqual(['laces']);
+  });
   it('starts fresh for anything else', () => {
     expect(normalizeState(null).items).toHaveLength(4);
     expect(normalizeState({ v: 1 }).v).toBe(2);

@@ -370,7 +370,9 @@ export function App() {
         }
       }
       d.lastBatch = done;
-      if (done.length && !d.shopCats.includes('laces')) d.shopCats.push('laces');
+      for (const it of d.items)
+        if (done.includes(it.id) && it.cat !== 'todo' && !d.shopCats.includes(it.cat))
+          d.shopCats.push(it.cat);
     });
     setBatchOpen(false);
   };
