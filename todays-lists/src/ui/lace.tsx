@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState, type CSSProperties } from 'react';
+import { useMemo, useRef, useState, type CSSProperties, type Dispatch, type SetStateAction } from 'react';
 import type { ClaudeSample } from '../claude';
 import type { BowKey, ItemView, LaceSized, LaceSpec, LaceType, LacingStyle, SizeSystem } from '../types';
 import { batchSpecs, calcLace, cap1, modelOf, parseLace, shoeTitle, sizeMens, sized } from '../calc/laces';
@@ -17,7 +17,7 @@ export interface LaceDraft {
 
 export interface LaceWizardProps {
   draft: LaceDraft;
-  setDraft: (d: LaceDraft) => void;
+  setDraft: Dispatch<SetStateAction<LaceDraft | null>>;
   onSave: () => void;
   onClose: () => void;
   ai: ClaudeSample | null;
@@ -51,12 +51,15 @@ export function LaceWizard({ draft, setDraft, onSave, onClose, ai, aiImg, onAiEr
   const [busy, setBusy] = useState('');
   const [note, setNote] = useState('');
   const fileRef = useRef<HTMLInputElement>(null);
-  const set = (patch: Partial<LaceSpec>) =>
-    setDraft(
-      Object.assign({}, draft, {
-        spec: Object.assign({}, spec, patch),
-      }),
-    );
+  // Functional update: the Claude lookups below resolve later, and the user may have typed in the meantime.
+  // Patching the latest draft (not the one captured when the call started) keeps those edits, and a
+  // closed wizard (null draft) stays closed.
+  const set = (patch: Partial<LaceSpec> | ((cur: LaceSpec) => Partial<LaceSpec>)) =>
+    setDraft((prev) => {
+      if (!prev) return prev;
+      const p = typeof patch === 'function' ? patch(prev.spec) : patch;
+      return { ...prev, spec: { ...prev.spec, ...p } };
+    });
   const sizeM = spec.size ? (spec.sizeSys === 'W' ? spec.size - 1.5 : spec.size) : null;
   const guess = m && !m.noLaces ? m.pairs(sizeM) : spec.aiPairs || 0;
   const pairs = spec.eyelets || guess || 0;
@@ -82,15 +85,18 @@ export function LaceWizard({ draft, setDraft, onSave, onClose, ai, aiImg, onAiEr
       const p = ep > 0 && ep < 15 ? Math.round(ep) : null;
       const sl = Number(r?.stockLaceInches);
       const len = sl >= 18 && sl <= 100 ? Math.round(sl) : null;
-      const patch: Partial<LaceSpec> = {};
-      if (p) {
-        patch.aiPairs = p;
-        if (!spec.eyelets) patch.eyelets = p;
-      }
-      if (len) patch.aiStock = len;
       const lt = asLaceType(r?.laceType);
-      if (lt && !spec.laceType) patch.laceType = lt;
-      set(patch);
+      set((cur) => {
+        // only fill fields the user has not set by now
+        const patch: Partial<LaceSpec> = {};
+        if (p) {
+          patch.aiPairs = p;
+          if (!cur.eyelets) patch.eyelets = p;
+        }
+        if (len) patch.aiStock = len;
+        if (lt && !cur.laceType) patch.laceType = lt;
+        return patch;
+      });
       setNote(
         `Claude (${(r && r.confidence) || 'unsure'}): ${p ? p + ' eyelet pairs' : 'eyelet count unknown'}${len ? ', ships with ' + len + '″ laces' : ''}. ${(r && r.note) || ''}`,
       );
@@ -129,10 +135,10 @@ export function LaceWizard({ draft, setDraft, onSave, onClose, ai, aiImg, onAiEr
       const ep = Number(r?.eyeletPairs);
       const p = ep > 0 && ep < 15 ? Math.round(ep) : null;
       if (p) patch.eyelets = p;
-      if (r && r.laceColor && !spec.color) patch.color = cap1(String(r.laceColor));
       const lt = asLaceType(r?.laceType);
       if (lt) patch.laceType = lt;
-      set(patch);
+      const laceColor = r && r.laceColor ? cap1(String(r.laceColor)) : null;
+      set((cur) => (laceColor && !cur.color ? { ...patch, color: laceColor } : patch));
       setNote(
         `Claude (${(r && r.confidence) || 'unsure'}): ${text || 'model unclear'}${p ? ', ' + p + ' eyelet pairs' : ''}. Count them yourself before you buy.`,
       );
