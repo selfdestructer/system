@@ -448,11 +448,11 @@ export function BatchSheet({
                     inputMode="numeric"
                     value={s.eyelets || ''}
                     placeholder={g ? String(g) : '?'}
-                    onChange={(e) =>
-                      setS(i.id, {
-                        eyelets: parseInt(e.target.value, 10) || undefined,
-                      })
-                    }
+                    onChange={(e) => {
+                      // same bounds as the wizard's +/- buttons: 1 to 14 pairs, blank means unknown
+                      const n = parseInt(e.target.value, 10);
+                      setS(i.id, { eyelets: n > 0 ? clamp(n, 1, 14) : undefined });
+                    }}
                   />
                 </label>
                 <label>
