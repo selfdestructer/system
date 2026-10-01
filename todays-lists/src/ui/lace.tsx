@@ -111,6 +111,7 @@ export function LaceWizard({ draft, setDraft, onSave, onClose, ai, aiImg, onAiEr
     if (!file || !ai) return;
     setBusy('photo');
     setNote('Looking at your photo…');
+    const before = spec; // what the form held when the photo was sent
     try {
       const r = await ai.json<PhotoReply | null>(
         'The photo shows a shoe. Identify the brand and model if you can, and count the eyelet pairs (lace holes per side, including any hidden top eyelet). ' +
@@ -137,8 +138,16 @@ export function LaceWizard({ draft, setDraft, onSave, onClose, ai, aiImg, onAiEr
       if (p) patch.eyelets = p;
       const lt = asLaceType(r?.laceType);
       if (lt) patch.laceType = lt;
-      const laceColor = r && r.laceColor ? cap1(String(r.laceColor)) : null;
-      set((cur) => (laceColor && !cur.color ? { ...patch, color: laceColor } : patch));
+      if (r && r.laceColor && !before.color) patch.color = cap1(String(r.laceColor));
+      set((cur) => {
+        // The photo may replace what the form held when it was sent, but never a field the user has
+        // changed since then.
+        const keep: Partial<LaceSpec> = {};
+        for (const k of Object.keys(patch) as (keyof LaceSpec)[]) {
+          if (cur[k] === before[k]) Object.assign(keep, { [k]: patch[k] });
+        }
+        return keep;
+      });
       setNote(
         `Claude (${(r && r.confidence) || 'unsure'}): ${text || 'model unclear'}${p ? ', ' + p + ' eyelet pairs' : ''}. Count them yourself before you buy.`,
       );
