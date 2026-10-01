@@ -2,10 +2,7 @@
 
 ## What this repo is
 
-Two things live here:
-
-1. **Prompt collections** at the root (`Cursor Prompts/`, `Devin AI/`, `Lovable/`, `Manus Agent Tools & Prompt/`, `Replit/`, `RooCode/`, `Windsurf/`, `v0 Prompts and Tools/`). Reference material only. Do not edit unless asked.
-2. **`todays-lists/`**: the Today's Lists web app. All engineering work happens here.
+The Today's Lists web app lives in **`todays-lists/`**. All engineering work happens there; the root holds only this file, the Claude Code skills, the GitHub workflow and a short README.
 
 Today's Lists is a shopping and to-do list that works out the exact part a list entry needs (laces today: model + size + eyelets → inches), finds it nearby or online, and plans the shortest trip out and back home. The claude.ai artifact at https://claude.ai/artifact/2vpRHGw68JBcwCwbXxWuTK is the preview we iterate on; it is rebuilt from this repo, never edited by hand.
 
