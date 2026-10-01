@@ -17,7 +17,7 @@ Today it knows shoelaces: type "Vans Old Skool white, 8 eyelets, size 10" and it
 
 ## Run it locally
 
-Requirements: Node 20 or newer and npm. Works on Linux, macOS, Windows and in Termux on Android.
+Requirements: Node 20.19+ or 22.13+ (what Vite 8 supports) and npm. Works on Linux, macOS, Windows and in Termux on Android.
 
 ```bash
 cd todays-lists
@@ -40,12 +40,12 @@ In Termux, run the same commands inside Termux and open http://localhost:5173 in
 ## Build and launch the web app
 
 ```bash
-npm run build        # → dist/  (static site: open index.html or host the folder anywhere)
+npm run build        # → dist/  (static site for any HTTP host)
 npm run preview      # serves dist/ locally to check the production build
 npm run build:single # → dist-single/index.html, one self-contained file (the artifact preview)
 ```
 
-`dist/` uses relative paths, so it runs from any folder or static host (GitHub Pages, Netlify, a phone's file browser). Pushing to `main` deploys `dist/` to GitHub Pages through `.github/workflows/pages.yml` once Pages is enabled for the repo (Settings → Pages → Source: GitHub Actions).
+`dist/` uses relative paths, so it runs from any folder on an HTTP host (GitHub Pages, Netlify, `npm run preview`, `npx serve dist`). It will not run opened straight from `file://`, because the module script is blocked there; `dist-single/index.html` is the one that works as a plain file. Pushing to `main` deploys `dist/` to GitHub Pages through `.github/workflows/pages.yml` once Pages is enabled for the repo (Settings → Pages → Source: GitHub Actions).
 
 ## Checks
 

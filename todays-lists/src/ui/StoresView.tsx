@@ -3,9 +3,9 @@ import type { ClaudeSample } from '../claude';
 import type { AppState, ItemView, LatLon, Store } from '../types';
 import { CHAINS } from '../data/catalog';
 import { shoeTitle, sized } from '../calc/laces';
-import { fmtMi, hav } from '../lib/geo';
+import { fmtMi, hav, nearestTown } from '../lib/geo';
 import { storeShort } from '../lib/links';
-import { allStores, itemShort } from '../lib/stores';
+import { allStores, itemShort, shoppable } from '../lib/stores';
 import { candidates, orderStops, suggestPicks } from '../lib/plan';
 import { uid } from '../lib/state';
 import { Seg } from './controls';
@@ -56,14 +56,7 @@ export function StoresView({
   const [showAll, setShowAll] = useState(false);
   const [aiBusy, setAiBusy] = useState(false);
   const shopItems = useMemo(
-    () =>
-      items.filter(
-        (i) =>
-          st.shopCats.includes(i.cat) &&
-          !i.done &&
-          !i.queued &&
-          (i.cat !== 'laces' || (i.calc && i.calc.inches)),
-      ),
+    () => items.filter((i) => st.shopCats.includes(i.cat) && shoppable(i)),
     [items, st.shopCats],
   );
   const { custom, aiStores, fixes } = st;
@@ -118,6 +111,7 @@ export function StoresView({
   async function askClaude() {
     if (!ai) return;
     setAiBusy(true);
+    const nearTown = nearestTown(base);
     const list = shopItems
       .map((i) => {
         const sc = sized(i.calc);
@@ -134,7 +128,7 @@ export function StoresView({
       .join('; ');
     const prompt =
       'You are helping plan an in-person shopping run.\n' +
-      `Home base: ${base.label} (lat ${base.lat.toFixed(4)}, lon ${base.lon.toFixed(4)}), in the Philadelphia / Bucks County area. Radius: ${st.radius} miles.\n` +
+      `Home base: "${base.label}" at lat ${base.lat.toFixed(4)}, lon ${base.lon.toFixed(4)}${nearTown ? ` (near ${nearTown.town.label})` : ''}. Radius: ${st.radius} miles around that point.\n` +
       `Items (id: description):\n${list}\n` +
       `Stores already listed, skip these: ${known || 'none'}.\n` +
       'Suggest up to 8 other real stores within the radius that likely carry these items (for laces think skate shops, shoe repair, running stores, sporting goods, department stores). Only include places you are confident exist and are open; skip anything you are unsure about.\n' +

@@ -12,7 +12,7 @@ import type {
   View,
 } from '../types';
 import { driveMin, fmtMi, roadMi } from '../lib/geo';
-import { amazonLink, fullAddr, fullRouteLink, navHome, navTo, storeShort } from '../lib/links';
+import { MAX_WAYPOINTS, amazonLink, fullAddr, fullRouteLink, navHome, navTo, storeShort } from '../lib/links';
 import { itemOdds, itemShort, oddLabel, storeIndex } from '../lib/stores';
 import {
   bestInsertion,
@@ -310,7 +310,9 @@ export function TripView({ st, update, items, imports, toast, setView }: TripVie
             <Icon d={I.back} />
           </button>
           <div>
-            <div className="eyebrow">Route plan · shortest loop</div>
+            <div className="eyebrow">
+              Route plan · {stores.length > 7 ? 'optimized loop' : 'shortest loop'}
+            </div>
             <h2 className="vh-t">
               {'Out and back from '}
               {base.label}
@@ -392,8 +394,10 @@ export function TripView({ st, update, items, imports, toast, setView }: TripVie
           )}
         </ol>
         <p className="fine">
-          Stop order is the shortest loop by distance. Miles are straight-line × 1.3 for roads; Google Maps
-          gives live times when you navigate.
+          {stores.length > 7
+            ? 'Stop order is a near-shortest loop by distance (checked with 2-opt). '
+            : 'Stop order is the shortest loop by distance. '}
+          Miles are straight-line × 1.3 for roads; Google Maps gives live times when you navigate.
         </p>
         <div className="row gap wrap">
           <button type="button" className="btn ghost" onClick={() => setView('stores')}>
@@ -405,7 +409,7 @@ export function TripView({ st, update, items, imports, toast, setView }: TripVie
             target="_blank"
             rel="noopener noreferrer"
           >
-            Whole loop in Maps
+            {stores.length > MAX_WAYPOINTS ? `First ${MAX_WAYPOINTS} stops in Maps` : 'Whole loop in Maps'}
             <Icon d={I.ext} size={14} />
           </a>
         </div>

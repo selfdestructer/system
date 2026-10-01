@@ -6,6 +6,7 @@ import { packImports, unpackImports, type PackedStore } from './importers';
 export const CK = 'tl2';
 export const LS_STATE = 'tl2_state';
 export const LS_IMPORTS = 'tl2_imp';
+export const LS_IMPORTS_AT = 'tl2_imp_at';
 export const LS_VIEW = 'tl2_view';
 
 export function readCookie(name: string): string | null {
@@ -86,18 +87,26 @@ export function loadLocal(): AppState | null {
   return [a, b].filter(isState).sort((x, y) => (y.updatedAt || 0) - (x.updatedAt || 0))[0] || null;
 }
 
-export function loadLocalImports(): Store[] {
+export interface SavedImports {
+  list: Store[];
+  /** When this list was last changed (0 when nothing is saved). */
+  updatedAt: number;
+}
+
+export function loadLocalImports(): SavedImports {
   try {
     const j = localStorage.getItem(LS_IMPORTS);
-    return j ? unpackImports(JSON.parse(j) as PackedStore[]) : [];
+    const at = +(localStorage.getItem(LS_IMPORTS_AT) || 0);
+    return { list: j ? unpackImports(JSON.parse(j) as PackedStore[]) : [], updatedAt: j ? at : 0 };
   } catch {
-    return [];
+    return { list: [], updatedAt: 0 };
   }
 }
 
-export function saveLocalImports(list: Store[]): void {
+export function saveLocalImports(list: Store[], updatedAt: number = Date.now()): void {
   try {
     localStorage.setItem(LS_IMPORTS, JSON.stringify(packImports(list)));
+    localStorage.setItem(LS_IMPORTS_AT, String(updatedAt));
   } catch {
     /* ignore */
   }

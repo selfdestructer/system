@@ -17,8 +17,12 @@ export const navTo = (s: Place): string =>
 export const navHome = (b: Base): string =>
   `https://www.google.com/maps/dir/?api=1&destination=${b.lat},${b.lon}&travelmode=driving`;
 
+/** Google Maps accepts at most this many waypoints between origin and destination. */
+export const MAX_WAYPOINTS = 9;
+
+/** A Maps directions link for the loop. Only the first MAX_WAYPOINTS stops fit; callers say so. */
 export function fullRouteLink(base: Base, stops: Place[]): string {
-  const wp = stops.slice(0, 9).map(dest).join('|');
+  const wp = stops.slice(0, MAX_WAYPOINTS).map(dest).join('|');
   return (
     `https://www.google.com/maps/dir/?api=1&origin=${base.lat},${base.lon}&destination=${base.lat},${base.lon}` +
     (wp ? `&waypoints=${enc(wp)}` : '') +

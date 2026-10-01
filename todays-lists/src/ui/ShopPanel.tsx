@@ -2,7 +2,7 @@ import { useState } from 'react';
 import type { AppState, ItemView } from '../types';
 import { CHAINS } from '../data/catalog';
 import { onlineLinks } from '../lib/links';
-import { itemShort } from '../lib/stores';
+import { itemShort, shoppable } from '../lib/stores';
 import { I, Icon } from './common';
 
 export type Update = (fn: (d: AppState) => void) => void;
@@ -15,10 +15,10 @@ export interface ShopPanelProps {
 }
 
 export function ShopPanel({ st, update, items, onFind }: ShopPanelProps) {
-  const openBy = (cat: string) => items.filter((i) => i.cat === cat && !i.done && !i.queued).length;
+  const openBy = (cat: string) => items.filter((i) => i.cat === cat && shoppable(i)).length;
   const shopCats = st.cats.filter((c) => c.shop);
   const selCount = st.shopCats.reduce((n, id) => n + openBy(id), 0);
-  const selItems = items.filter((i) => st.shopCats.includes(i.cat) && !i.done && !i.queued);
+  const selItems = items.filter((i) => st.shopCats.includes(i.cat) && shoppable(i));
   const [online, setOnline] = useState(false);
   const relChains = Object.keys(CHAINS).filter((k) =>
     st.shopCats.some((c) => (CHAINS[k].cats[c] || 0) >= 0.4),

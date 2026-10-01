@@ -4,7 +4,16 @@ import { DEFAULT_BASES, SEED_LACES } from '../data/catalog';
 import { calcLace, parseLace } from '../calc/laces';
 import { roadMi } from './geo';
 import { allStores, storeIndex } from './stores';
-import { bestInsertion, candidates, orderStops, rerouteFor, suggestPicks, tourLen, tripLegs } from './plan';
+import {
+  bestInsertion,
+  candidates,
+  orderStops,
+  pendingSeq,
+  rerouteFor,
+  suggestPicks,
+  tourLen,
+  tripLegs,
+} from './plan';
 
 const lowerBucks = DEFAULT_BASES[0];
 const seedItems: ItemView[] = SEED_LACES.map((text, i) => {
@@ -134,6 +143,34 @@ describe('rerouteFor', () => {
     const d = { bases: DEFAULT_BASES, radius: 5, trip: makeTrip(['jny-oxford']) };
     rerouteFor(d, item, sm, []);
     expect(d.trip.notice?.kind).toBe('none');
+  });
+});
+
+describe('pendingSeq', () => {
+  it('skips later stops whose store is gone and falls back to home for the current one', () => {
+    const sm = storeIndex(empty);
+    const trip: Trip = {
+      id: 't',
+      status: 'active',
+      baseId: lowerBucks.id,
+      items: [],
+      stops: [
+        { sid: 'imp-gone', state: 'pending', res: {} },
+        { sid: 'zum-oxford', state: 'pending', res: {} },
+        { sid: 'imp-gone-2', state: 'pending', res: {} },
+      ],
+      cur: 0,
+      notice: null,
+      created: 0,
+    };
+    const { idx, pts } = pendingSeq(trip, lowerBucks, sm);
+    expect(idx).toEqual([0, 1]);
+    expect(pts[0]).toEqual(lowerBucks);
+    expect(pts[1].lat).toBe(sm['zum-oxford'].lat);
+    expect(pts[2]).toEqual(lowerBucks);
+    // re-routing with a removed store in the trip must not throw
+    const d = { bases: DEFAULT_BASES, radius: 10, trip };
+    expect(() => rerouteFor(d, seedItems[0], sm, allStores(empty))).not.toThrow();
   });
 });
 

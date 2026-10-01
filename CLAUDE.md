@@ -13,7 +13,7 @@ Today's Lists is a shopping and to-do list that works out the exact part a list 
 
 - Vite 8, React 18, TypeScript (strict), plain CSS in `src/styles.css`.
 - Vitest for tests, ESLint (typescript-eslint + react-hooks) and Prettier.
-- npm. Node 20+. Developed on Arch Linux and in Termux; nothing may depend on a desktop-only tool.
+- npm. Node 20.19+ or 22.13+ (Vite 8's range). Developed on Arch Linux and in Termux; nothing may depend on a desktop-only tool.
 - No backend. Persistence is cookie + localStorage; on claude.ai the optional `window.claude` runtime adds account sync and Claude lookups.
 
 ## Commands (run inside `todays-lists/`)

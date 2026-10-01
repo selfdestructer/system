@@ -70,6 +70,12 @@ describe('parseLace', () => {
   it('does not mistake "classic" for a Vans Authentic without the brand', () => {
     expect(parseLace('reebok classic leather').modelKey).toBeUndefined();
   });
+  it('only matches ambiguous Vans names when Vans is named', () => {
+    expect(parseLace('slip-on laces').modelKey).toBeUndefined();
+    expect(parseLace('era shoes 5 eyelets').modelKey).toBeUndefined();
+    expect(parseLace('vans era').modelKey).toBe('vans-era');
+    expect(parseLace('half cab 7 eyes').modelKey).toBe('vans-half-cab');
+  });
 });
 
 describe('calcLace', () => {
@@ -129,10 +135,17 @@ describe('calculator registry', () => {
     const vague = parseLace('vans old skool');
     expect(lacesCalculator.complete(vague, calcLace(vague))).toBe(false);
     expect(lacesCalculator.missing(vague)).toEqual(['lace color']);
+    // a known model supplies the eyelet count, so color is all that was missing
+    const known = parseLace('vans old skool white size 10');
+    expect(lacesCalculator.complete(known, calcLace(known))).toBe(true);
+    const noLaces = parseLace('vans slip on white');
+    expect(lacesCalculator.complete(noLaces, calcLace(noLaces))).toBe(false);
   });
   it('summarises the buy', () => {
     const spec = parseLace(SEED_LACES[1]);
     expect(lacesCalculator.summary(spec, calcLace(spec))).toBe('Vans Half Cab: buy 54″ flat');
-    expect(lacesCalculator.search(spec, calcLace(spec))).toBe('54 inch shoelaces black');
+    expect(lacesCalculator.search(spec, calcLace(spec))).toBe('54 inch flat shoelaces black');
+    const fat = parseLace('nike dunk low black 7 eyelets');
+    expect(lacesCalculator.search(fat, calcLace(fat))).toBe('54 inch fat shoelaces black');
   });
 });

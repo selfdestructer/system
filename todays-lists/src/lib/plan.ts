@@ -231,8 +231,10 @@ export function lookFor(
 /** Indexes and points of the stops still ahead (current first), ending at home. */
 export function pendingSeq(trip: Trip, base: LatLon, sm: StoreIndex): { idx: number[]; pts: LatLon[] } {
   const idx = [trip.cur];
-  for (let j = trip.cur + 1; j < trip.stops.length; j++) if (trip.stops[j].state === 'pending') idx.push(j);
-  const pts: LatLon[] = idx.map((j) => sm[trip.stops[j].sid] as LatLon).concat([base]);
+  for (let j = trip.cur + 1; j < trip.stops.length; j++)
+    if (trip.stops[j].state === 'pending' && sm[trip.stops[j].sid]) idx.push(j);
+  // A removed store (imports cleared, Claude list rotated) falls back to home for the current stop.
+  const pts: LatLon[] = idx.map((j): LatLon => sm[trip.stops[j]?.sid] || base).concat([base]);
   return { idx, pts };
 }
 

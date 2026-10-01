@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { finishImport, importRecords, kindFromTags, packImports, unpackImports } from './importers';
-import { DEFAULT_BASES } from '../data/catalog';
+import { DEFAULT_BASES, STORES0 } from '../data/catalog';
 
 const overpass = JSON.stringify({
   elements: [
@@ -94,6 +94,23 @@ describe('importRecords', () => {
     expect(recs.map((r) => r.kind)).toEqual(['sporting', 'grocery']);
     expect(recs[0].addr).toBe('150 Commerce Blvd');
   });
+  it('accepts a single GeoJSON feature on its own', () => {
+    const one = JSON.stringify({
+      type: 'Feature',
+      geometry: { type: 'Point', coordinates: [-74.87, 40.18] },
+      properties: { name: 'Journeys' },
+    });
+    expect(importRecords(one).map((r) => r.chain)).toEqual(['journeys']);
+  });
+  it('drops coordinates outside the globe', () => {
+    const bad = JSON.stringify({
+      elements: [
+        { type: 'node', lat: 40.16, lon: 285.12, tags: { name: 'Nowhere Shoes', shop: 'shoes' } },
+        { type: 'node', lat: 95, lon: -74.9, tags: { name: 'Polar Shoes', shop: 'shoes' } },
+      ],
+    });
+    expect(importRecords(bad)).toEqual([]);
+  });
   it('returns nothing for empty or unparseable input', () => {
     expect(importRecords('')).toEqual([]);
     expect(importRecords('not json')).toEqual([]);
@@ -123,5 +140,11 @@ describe('finishImport', () => {
     const again = finishImport(recs, DEFAULT_BASES, kept);
     expect(again).toHaveLength(2);
     expect(unpackImports(packImports(kept))).toEqual(kept);
+  });
+  it('skips chains the app already knows at that spot', () => {
+    const recs = importRecords(overpass);
+    // the seed list has Zumiez at Oxford Valley Mall (40.1796, -74.8747); OSM says "Zumiez" at 40.18, -74.87
+    const kept = finishImport(recs, DEFAULT_BASES, [], STORES0);
+    expect(kept.map((s) => s.name)).toEqual(['Mike’s Shoe Repair']);
   });
 });

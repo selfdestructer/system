@@ -76,7 +76,8 @@ const readView = (st: AppState): View => {
 
 export function App() {
   const [st, setSt] = useState<AppState>(() => normalizeState(loadLocal()));
-  const [imports, setImportsState] = useState(() => loadLocalImports());
+  const [imports, setImportsState] = useState(() => loadLocalImports().list);
+  const importsAt = useRef(loadLocalImports().updatedAt);
   const [sync, setSync] = useState<Sync>('device');
   const [saved, setSaved] = useState<SavedWhere>({ ls: true, ck: true });
   const [ai, setAi] = useState<ClaudeSample | null>(null);
@@ -249,10 +250,12 @@ export function App() {
         const snap = await impRef.get();
         if (!dead && snap.exists) {
           const d = snap.data();
-          if (d && Array.isArray(d.rows) && d.rows.length) {
+          // Newest copy wins, even when it is empty (the user cleared imports elsewhere).
+          if (d && Array.isArray(d.rows) && (d.updatedAt || 0) > importsAt.current) {
             const list = unpackImports(d.rows);
-            setImportsState((prev) => (prev.length >= list.length ? prev : list));
-            saveLocalImports(list);
+            importsAt.current = d.updatedAt || 0;
+            setImportsState(list);
+            saveLocalImports(list, importsAt.current);
           }
         }
       } catch {
@@ -265,10 +268,12 @@ export function App() {
     };
   }, [scheduleWrite]);
   const setImports = useCallback((list: Parameters<typeof saveLocalImports>[0]) => {
+    const at = Date.now();
+    importsAt.current = at;
     setImportsState(list);
-    saveLocalImports(list);
+    saveLocalImports(list, at);
     const r = capRef.current.impRef;
-    if (r) r.set({ updatedAt: Date.now(), rows: packImports(list) }).catch(() => {});
+    if (r) r.set({ updatedAt: at, rows: packImports(list) }).catch(() => {});
   }, []);
   const onAiError = useCallback((e: unknown) => {
     const code = (e as ClaudeError | null)?.code;

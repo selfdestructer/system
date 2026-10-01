@@ -29,7 +29,11 @@ A calculator turns a typed list entry into the exact thing to buy, the way laces
    - `calculator.ts`: an object implementing `PartCalculator<Spec, Result>` from `src/calc/types.ts`.
    - `<part>.test.ts`: at least one test per published example you found, one for a missing-input case, one for the summary and search strings.
 4. **Types.** Add the spec and result types to `src/types.ts`. If the item needs a new stored field, bump `AppState.v` and extend `normalizeState` in `src/lib/state.ts`.
-5. **Register.** Add the calculator to `CALCULATORS` in `src/calc/registry.ts`. `App.addItem` already routes any category with a calculator through parse → calc → complete → wizard.
+5. **Register and wire it in.** Today the registry, `Item.lace` and `LaceWizard` are all typed to laces, so a second part needs four small edits, not just a registry line:
+   - `src/calc/registry.ts`: widen the map's value type to a union (`PartCalculator<LaceSpec, LaceCalc> | PartCalculator<WiperSpec, WiperCalc>`) or a type-erased wrapper, and add the entry.
+   - `src/types.ts`: add the spec field on `Item` (for example `wipers?: WiperSpec`) and a result union for `ItemView.calc`; bump `AppState.v` and extend `normalizeState`.
+   - `src/ui/App.tsx`: `addItem`, `saveDraft`, `runBatch`, `editLace` and the `items` memo read and write `Item.lace`; make them pick the field by calculator id, and open the new wizard for that category instead of `LaceWizard`.
+   - `src/lib/links.ts` `itemQuery` already asks the calculator for its search string, so links work once the above is in.
 6. **Category.** Add the category to `CATS0` in `src/data/catalog.ts` if it does not exist, with a tone and `shop: true`.
 7. **Wizard.** If the inputs fit the lace wizard pattern (a few fields, instant result), copy `LaceWizard` in `src/ui/lace.tsx` into `src/ui/<part>.tsx` and swap the fields. Keep the result panel showing `why` and `src`.
 8. **Store odds.** If stores differ for this part, add a per-item odds function in `src/lib/stores.ts` (see `laceOdds`) and extend `KIND_CATS` / `CHAINS` for the new category. Add online links for it in `onlineLinks()` in `src/lib/links.ts`.

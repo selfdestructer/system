@@ -79,6 +79,10 @@ export function itemOdds(s: StoreWithCats, it: ItemView): number {
   return (s.cats && s.cats[it.cat]) || 0;
 }
 
+/** Open, not queued for bulk calc, and sized when its category has a calculator. */
+export const shoppable = (i: ItemView): boolean =>
+  !i.done && !i.queued && (i.cat !== 'laces' || !!(i.calc && i.calc.inches));
+
 export type OddTier = 'good' | 'maybe' | 'long';
 export const oddTier = (o: number): OddTier => (o >= 0.65 ? 'good' : o >= 0.45 ? 'maybe' : 'long');
 export const oddLabel = (o: number): string => (o >= 0.65 ? 'Good odds' : o >= 0.45 ? 'Maybe' : 'Long shot');

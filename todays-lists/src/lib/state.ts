@@ -37,15 +37,23 @@ export function seedState(): AppState {
 }
 
 /** Make any saved blob safe to use: fill gaps with defaults, add new categories. */
+const withIds = <T extends { id: string }>(v: unknown): T[] =>
+  Array.isArray(v)
+    ? v.filter((x): x is T => !!x && typeof x === 'object' && typeof (x as T).id === 'string')
+    : [];
+
 export function normalizeState(s: unknown): AppState {
   const d = seedState();
   if (!s || typeof s !== 'object' || (s as { v?: unknown }).v !== 2) return d;
   const out: AppState = { ...d, ...(s as Partial<AppState>) };
-  const have = new Set((out.cats || []).map((c) => c.id));
-  out.cats = (out.cats || []).concat(CATS0.filter((c) => !have.has(c.id)));
-  if (!Array.isArray(out.bases) || !out.bases.length) out.bases = d.bases;
+  // Saved collections can be anything (hand-edited cookie, older build): keep only rows with an id.
+  out.cats = withIds(out.cats);
+  const have = new Set(out.cats.map((c) => c.id));
+  out.cats = out.cats.concat(CATS0.filter((c) => !have.has(c.id)));
+  out.bases = withIds(out.bases);
+  if (!out.bases.length) out.bases = d.bases;
   if (!out.bases.some((b) => b.id === out.baseId)) out.baseId = out.bases[0].id;
-  if (!Array.isArray(out.items)) out.items = d.items;
+  out.items = withIds(out.items);
   if (!Array.isArray(out.shopCats)) out.shopCats = d.shopCats;
   if (!Array.isArray(out.chains)) out.chains = d.chains;
   if (!Array.isArray(out.picks)) out.picks = d.picks;

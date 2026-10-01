@@ -96,8 +96,9 @@ describe('device storage', () => {
         src: 'import' as const,
       },
     ];
-    saveLocalImports(list);
-    expect(loadLocalImports()).toEqual(list);
+    saveLocalImports(list, 123);
+    expect(loadLocalImports()).toEqual({ list, updatedAt: 123 });
+    expect(loadLocalImports().updatedAt).toBe(123);
   });
 });
 
@@ -112,6 +113,18 @@ describe('normalizeState', () => {
     expect(Array.isArray(s.items)).toBe(true);
     expect(s.cats.map((c) => c.id)).toContain('todo');
     expect(s.bases.some((b) => b.id === s.baseId)).toBe(true);
+  });
+  it('throws away malformed rows instead of crashing', () => {
+    const s = normalizeState({
+      v: 2,
+      cats: 'laces',
+      bases: [null, { id: 'b1', label: 'Home', lat: 40, lon: -75 }],
+      items: [{}, null],
+    });
+    expect(s.cats.length).toBeGreaterThan(0);
+    expect(s.bases.map((b) => b.id)).toEqual(['b1']);
+    expect(s.baseId).toBe('b1');
+    expect(s.items).toEqual([]);
   });
   it('starts fresh for anything else', () => {
     expect(normalizeState(null).items).toHaveLength(4);

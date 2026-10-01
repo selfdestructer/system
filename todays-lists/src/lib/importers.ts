@@ -84,6 +84,7 @@ export function importRecords(text: string): ImportRecord[] {
   if (d && !Array.isArray(d) && Array.isArray(d.elements)) recs = d.elements as RawRecord[];
   else if (d && !Array.isArray(d) && Array.isArray(d.features)) recs = d.features as RawRecord[];
   else if (Array.isArray(d)) recs = d as RawRecord[];
+  else if (d && !Array.isArray(d) && (d as RawRecord).type === 'Feature') recs = [d as RawRecord];
   const out: ImportRecord[] = [];
   for (const r of recs) {
     if (!r || typeof r !== 'object') continue;
@@ -104,7 +105,7 @@ export function importRecords(text: string): ImportRecord[] {
       lon = r.lon != null ? +String(r.lon) : r.center ? +String(r.center.lon) : NaN;
       tags = r.tags || (r as Tags);
     }
-    if (!isFinite(lat) || !isFinite(lon)) continue;
+    if (!Number.isFinite(lat) || !Number.isFinite(lon) || Math.abs(lat) > 90 || Math.abs(lon) > 180) continue;
     const name = str(tags.name || tags.brand);
     if (!name) continue;
     const street =
@@ -127,18 +128,31 @@ export function importRecords(text: string): ImportRecord[] {
   return out;
 }
 
-/** Keep records near the bases, drop duplicates, cap the list. */
-export function finishImport(recs: ImportRecord[], bases: LatLon[], existing: Store[] = []): Store[] {
+const nameKey = (s: { name: string; lat: number; lon: number }) =>
+  s.name.toLowerCase() + '|' + s.lat.toFixed(3) + '|' + s.lon.toFixed(3);
+
+/** Same chain within about a third of a mile of a store we already know: the seed list names
+    stores by mall ("Zumiez · Oxford Valley Mall") while OSM says "Zumiez", so names alone miss. */
+const sameChainNearby = (r: ImportRecord, known: Store[]): boolean =>
+  !!r.chain && known.some((s) => s.chain === r.chain && hav(s, r) < 0.35);
+
+/** Keep records near the bases, drop duplicates of prior imports and of any store the app
+    already knows (`universe`: seed + custom + Claude), cap the list. Returns imports only. */
+export function finishImport(
+  recs: ImportRecord[],
+  bases: LatLon[],
+  existing: Store[] = [],
+  universe: Store[] = [],
+): Store[] {
   const keep: (Store & { near: number })[] = [];
-  const seen = new Set(
-    existing.map((s) => s.name.toLowerCase() + '|' + s.lat.toFixed(3) + '|' + s.lon.toFixed(3)),
-  );
+  const seen = new Set(existing.concat(universe).map(nameKey));
+  const known = universe.filter((s) => s.chain);
   for (const r of recs) {
     if (r.kind === 'other' || r.kind === 'electronics') continue;
     const near = bases.length ? Math.min(...bases.map((b) => hav(b, r))) : 0;
     if (near > 40) continue;
-    const key = r.name.toLowerCase() + '|' + r.lat.toFixed(3) + '|' + r.lon.toFixed(3);
-    if (seen.has(key)) continue;
+    const key = nameKey(r);
+    if (seen.has(key) || sameChainNearby(r, known)) continue;
     seen.add(key);
     keep.push({ id: 'imp-' + uid(), src: 'import', near, ...r });
   }

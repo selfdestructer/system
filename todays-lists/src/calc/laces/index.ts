@@ -78,7 +78,7 @@ export function parseLace(text: string): LaceSpec {
   for (const m of MODELS) {
     const mm = t.match(m.re);
     if (!mm) continue;
-    if (m.needVans && brand && brand !== 'Vans') continue;
+    if (m.needVans && brand !== 'Vans') continue;
     if (m.key === 'vans-authentic' && /classic/.test(mm[0]) && brand !== 'Vans') continue;
     if (m.needNike && brand !== 'Nike' && !/metcon/.test(mm[0])) continue;
     spec.modelKey = m.key;

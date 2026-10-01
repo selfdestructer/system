@@ -27,7 +27,7 @@ export function parseCoords(text: string): LatLon | null {
     /place\/(-?\d{1,2}\.\d+)(?:,|%2C)\s*\+?(-?\d{1,3}\.\d+)/i,
     /[?&](?:q|ll|query|destination|daddr|center|sll)=(-?\d{1,2}\.\d+)(?:,|%2C)\s*\+?(-?\d{1,3}\.\d+)/i,
     /@(-?\d{1,2}\.\d+),\s*(-?\d{1,3}\.\d+)/,
-    /(-?\d{1,2}\.\d{3,})\s*[,\s]\s*(-?\d{1,3}\.\d{3,})/,
+    /(?<![\d.-])(-?\d{1,2}\.\d{3,})(?![\d.])\s*[,\s]\s*(-?\d{1,3}\.\d{3,})(?![\d.])/,
   ];
   for (const re of pats) {
     const m = s.match(re);

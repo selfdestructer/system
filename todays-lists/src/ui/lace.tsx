@@ -1,7 +1,7 @@
 import { useMemo, useRef, useState, type CSSProperties } from 'react';
 import type { ClaudeSample } from '../claude';
 import type { BowKey, ItemView, LaceSized, LaceSpec, LaceType, LacingStyle, SizeSystem } from '../types';
-import { calcLace, cap1, modelOf, parseLace, shoeTitle, sized } from '../calc/laces';
+import { calcLace, cap1, modelOf, parseLace, shoeTitle, sizeMens, sized } from '../calc/laces';
 import { BOWS, COLORS, MODELS, STYLES, TYPES } from '../calc/laces/data';
 import { Chips, EyeletDots, LaceResult, Seg } from './controls';
 import { I, Icon, aiErr } from './common';
@@ -433,7 +433,7 @@ export function BatchSheet({
         {items.map((i) => {
           const s = specs[i.id];
           const m = modelOf(s.modelKey);
-          const g = m && !m.noLaces ? m.pairs(s.size || null) : 0;
+          const g = m && !m.noLaces ? m.pairs(sizeMens(s)) : 0;
           return (
             <li key={i.id}>
               <div className="bl-t">

@@ -3,7 +3,7 @@ import type { AppState, Candidate, CatOdds, ItemView, LatLon, Store } from '../t
 import { CATS0, TOWNS } from '../data/catalog';
 import { fmtMi, nearestTown, parseCoords } from '../lib/geo';
 import { fullAddr, mapsSearch, stockLink } from '../lib/links';
-import { itemShort, oddLabel, oddTier } from '../lib/stores';
+import { allStores, itemShort, oddLabel, oddTier } from '../lib/stores';
 import { finishImport, importRecords } from '../lib/importers';
 import { uid } from '../lib/state';
 import { Phone } from './controls';
@@ -412,7 +412,8 @@ export function ImportPanel({ st, imports, setImports, toast, onClose }: ImportP
       setMsg('No stores found in that. It should be Overpass JSON, GeoJSON, or All The Places NDJSON.');
       return;
     }
-    const next = finishImport(recs, st.bases, imports);
+    const universe = allStores({ custom: st.custom, aiStores: st.aiStores, fixes: st.fixes }, []);
+    const next = finishImport(recs, st.bases, imports, universe);
     const added = next.length - imports.length;
     setImports(next);
     setMsg(

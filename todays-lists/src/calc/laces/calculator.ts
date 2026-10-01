@@ -25,16 +25,15 @@ export const lacesCalculator: PartCalculator<LaceSpec, LaceCalc> = {
     return out;
   },
   complete(spec, r) {
-    return !r.need && !r.noLaces && !!spec.eyelets && !!spec.color && !!(spec.modelKey || spec.size);
+    return !r.need && !r.noLaces && lacesCalculator.missing(spec).length === 0;
   },
   title: shoeTitle,
   summary(spec, r) {
     if (!r.inches) return null;
     return `${shoeTitle(spec)}: buy ${r.inches}″ ${r.typeLabel.split(' · ')[0].toLowerCase()}`;
   },
-  search(spec, r) {
-    if (!r.inches) return null;
-    const col = spec.color ? ' ' + spec.color.split(/ or |\//)[0].toLowerCase() : '';
-    return `${r.inches} inch shoelaces${col}`;
+  search(_spec, r) {
+    // calcLace already builds "<inches> inch <type> shoelaces <color>".
+    return r.inches ? r.search : null;
   },
 };
