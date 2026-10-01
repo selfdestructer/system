@@ -289,3 +289,17 @@ export function swatchOf(color: string | undefined): string {
 /** The sized result, or null when the calc still needs input or the shoe has no laces. */
 export const sized = (c: LaceCalc | undefined | null): LaceSized | null =>
   c && c.inches ? (c as LaceSized) : null;
+
+/**
+ * One spec per queued item for the bulk sheet: the item's own spec (or a fresh parse of its text) with
+ * the user's edits on top. Derived from the current item list every time, so a pair queued after the
+ * sheet opened gets a spec too instead of an undefined lookup.
+ */
+export function batchSpecs(
+  items: ReadonlyArray<{ id: string; text: string; lace?: LaceSpec }>,
+  edits: Readonly<Record<string, Partial<LaceSpec>>>,
+): Record<string, LaceSpec> {
+  const o: Record<string, LaceSpec> = {};
+  for (const i of items) o[i.id] = { ...(i.lace || parseLace(i.text)), ...edits[i.id] };
+  return o;
+}

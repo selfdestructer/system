@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { calcLace, parseLace, shoeTitle, snapLen, sized } from './index';
+import { batchSpecs, calcLace, parseLace, shoeTitle, snapLen, sized } from './index';
 import { lacesCalculator } from './calculator';
 import { getCalculator } from '../registry';
 import { SEED_LACES } from '../../data/catalog';
@@ -121,6 +121,26 @@ describe('snapLen', () => {
     expect(snapLen(37)).toBe(36);
     expect(snapLen(38)).toBe(40);
     expect(snapLen(99)).toBe(84);
+  });
+});
+
+describe('batchSpecs (bulk sheet)', () => {
+  const a = { id: 'a', text: SEED_LACES[0], lace: parseLace(SEED_LACES[0]) };
+  it('derives a spec for every queued item, parsing text when the item has none', () => {
+    const b = { id: 'b', text: 'nike dunk low black 7 eyelets' };
+    const s = batchSpecs([a, b], {});
+    expect(s.a.modelKey).toBe('vans-authentic');
+    expect(s.b).toMatchObject({ modelKey: 'nike-sb-dunk-low', eyelets: 7, color: 'Black' });
+  });
+  it('keeps edits per item and still covers a pair queued after the sheet opened', () => {
+    const edits = { a: { eyelets: 6, color: 'Red' } };
+    const late = { id: 'late', text: 'some shoe' };
+    const s = batchSpecs([a, late], edits);
+    expect(s.a).toMatchObject({ modelKey: 'vans-authentic', eyelets: 6, color: 'Red' });
+    expect(s.late).toBeDefined();
+    expect(calcLace(s.late).need).toEqual(['eyelets']);
+    // the item's own spec is never mutated by an edit
+    expect(a.lace.eyelets).toBe(5);
   });
 });
 

@@ -1,7 +1,7 @@
 import { useMemo, useRef, useState, type CSSProperties } from 'react';
 import type { ClaudeSample } from '../claude';
 import type { BowKey, ItemView, LaceSized, LaceSpec, LaceType, LacingStyle, SizeSystem } from '../types';
-import { calcLace, cap1, modelOf, parseLace, shoeTitle, sizeMens, sized } from '../calc/laces';
+import { batchSpecs, calcLace, cap1, modelOf, parseLace, shoeTitle, sizeMens, sized } from '../calc/laces';
 import { BOWS, COLORS, MODELS, STYLES, TYPES } from '../calc/laces/data';
 import { Chips, EyeletDots, LaceResult, Seg } from './controls';
 import { I, Icon, aiErr } from './common';
@@ -401,13 +401,12 @@ export function BatchSheet({
   onRun: (specs: Record<string, LaceSpec>) => void;
   onClose: () => void;
 }) {
-  const [specs, setSpecs] = useState(() => {
-    const o: Record<string, LaceSpec> = {};
-    for (const i of items) o[i.id] = { ...(i.lace || parseLace(i.text)) };
-    return o;
-  });
+  // Only the user's edits live in state. Each row's spec is derived from the item on every render, so
+  // a pair queued while the sheet is open still gets a row (and is still sent to onRun).
+  const [edits, setEdits] = useState<Record<string, Partial<LaceSpec>>>({});
+  const specs = batchSpecs(items, edits);
   const setS = (id: string, patch: Partial<LaceSpec>) =>
-    setSpecs((p) => ({ ...p, [id]: { ...p[id], ...patch } }));
+    setEdits((p) => ({ ...p, [id]: { ...p[id], ...patch } }));
   const blocked = items.filter((i) => calcLace(specs[i.id]).need);
   return (
     <section className="wiz batch" aria-label="Bulk lace math">
