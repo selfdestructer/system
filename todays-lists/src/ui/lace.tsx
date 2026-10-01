@@ -1,4 +1,12 @@
-import { useMemo, useRef, useState, type CSSProperties, type Dispatch, type SetStateAction } from 'react';
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type CSSProperties,
+  type Dispatch,
+  type SetStateAction,
+} from 'react';
 import type { ClaudeSample } from '../claude';
 import type { BowKey, ItemView, LaceSized, LaceSpec, LaceType, LacingStyle, SizeSystem } from '../types';
 import { batchSpecs, calcLace, cap1, modelOf, parseLace, shoeTitle, sizeMens, sized } from '../calc/laces';
@@ -44,6 +52,14 @@ interface PhotoReply {
 const asLaceType = (v: unknown): LaceType | null =>
   typeof v === 'string' && v in TYPES ? (v as LaceType) : null;
 
+/** The inputs a Claude answer was computed from; if they change, the answer is about another shoe. */
+const shoeKey = (s: LaceSpec) => [s.modelKey, s.modelText, s.brand, s.size, s.sizeSys].join('|');
+/** Same pair, same shoe: a pending answer may still be applied to `cur`. */
+const samePair = (cur: LaceDraft, startedOn: LaceDraft) =>
+  cur.editId === startedOn.editId &&
+  cur.text === startedOn.text &&
+  shoeKey(cur.spec) === shoeKey(startedOn.spec);
+
 export function LaceWizard({ draft, setDraft, onSave, onClose, ai, aiImg, onAiError }: LaceWizardProps) {
   const spec = draft.spec;
   const calc = useMemo(() => calcLace(spec), [spec]);
@@ -51,15 +67,26 @@ export function LaceWizard({ draft, setDraft, onSave, onClose, ai, aiImg, onAiEr
   const [busy, setBusy] = useState('');
   const [note, setNote] = useState('');
   const fileRef = useRef<HTMLInputElement>(null);
-  // Functional update: the Claude lookups below resolve later, and the user may have typed in the meantime.
-  // Patching the latest draft (not the one captured when the call started) keeps those edits, and a
-  // closed wizard (null draft) stays closed.
-  const set = (patch: Partial<LaceSpec> | ((cur: LaceSpec) => Partial<LaceSpec>)) =>
+  // Claude answers arrive later. Each request gets a generation number (a newer request supersedes it)
+  // and remembers the draft it was asked about (closing the wizard, opening another pair or changing
+  // the shoe discards it).
+  const reqRef = useRef(0);
+  const draftRef = useRef(draft);
+  useEffect(() => {
+    draftRef.current = draft;
+  }, [draft]);
+  // Functional update: patch the latest draft, not the one captured when the call started, so edits
+  // made in the meantime survive. With `startedOn`, the patch applies only while it is still the same
+  // pair and shoe; a closed wizard (null draft) stays closed.
+  const set = (patch: Partial<LaceSpec> | ((cur: LaceSpec) => Partial<LaceSpec>), startedOn?: LaceDraft) =>
     setDraft((prev) => {
-      if (!prev) return prev;
+      if (!prev || (startedOn && !samePair(prev, startedOn))) return prev;
       const p = typeof patch === 'function' ? patch(prev.spec) : patch;
       return { ...prev, spec: { ...prev.spec, ...p } };
     });
+  /** True when a finished request is still the latest one and about the pair on screen. */
+  const stillWanted = (gen: number, startedOn: LaceDraft) =>
+    gen === reqRef.current && samePair(draftRef.current, startedOn);
   const sizeM = spec.size ? (spec.sizeSys === 'W' ? spec.size - 1.5 : spec.size) : null;
   const guess = m && !m.noLaces ? m.pairs(sizeM) : spec.aiPairs || 0;
   const pairs = spec.eyelets || guess || 0;
@@ -71,6 +98,8 @@ export function LaceWizard({ draft, setDraft, onSave, onClose, ai, aiImg, onAiEr
     if (!ai) return;
     setBusy('lookup');
     setNote('Asking Claude about this shoe…');
+    const startedOn = draft;
+    const gen = ++reqRef.current;
     try {
       const name = shoeTitle(spec);
       const r = await ai.json<LookupReply | null>(
@@ -81,6 +110,7 @@ export function LaceWizard({ draft, setDraft, onSave, onClose, ai, aiImg, onAiEr
           modelTier: 'quick',
         },
       );
+      if (!stillWanted(gen, startedOn)) return;
       const ep = Number(r?.eyeletPairs);
       const p = ep > 0 && ep < 15 ? Math.round(ep) : null;
       const sl = Number(r?.stockLaceInches);
@@ -96,22 +126,25 @@ export function LaceWizard({ draft, setDraft, onSave, onClose, ai, aiImg, onAiEr
         if (len) patch.aiStock = len;
         if (lt && !cur.laceType) patch.laceType = lt;
         return patch;
-      });
+      }, startedOn);
       setNote(
         `Claude (${(r && r.confidence) || 'unsure'}): ${p ? p + ' eyelet pairs' : 'eyelet count unknown'}${len ? ', ships with ' + len + '″ laces' : ''}. ${(r && r.note) || ''}`,
       );
     } catch (e) {
+      if (!stillWanted(gen, startedOn)) return;
       setNote(aiErr(e));
       onAiError(e);
     } finally {
-      setBusy('');
+      if (gen === reqRef.current) setBusy('');
     }
   }
   async function photo(file: File | null | undefined) {
     if (!file || !ai) return;
     setBusy('photo');
     setNote('Looking at your photo…');
-    const before = spec; // what the form held when the photo was sent
+    const startedOn = draft;
+    const before = startedOn.spec; // what the form held when the photo was sent
+    const gen = ++reqRef.current;
     try {
       const r = await ai.json<PhotoReply | null>(
         'The photo shows a shoe. Identify the brand and model if you can, and count the eyelet pairs (lace holes per side, including any hidden top eyelet). ' +
@@ -121,6 +154,7 @@ export function LaceWizard({ draft, setDraft, onSave, onClose, ai, aiImg, onAiEr
           modelTier: 'default',
         },
       );
+      if (!stillWanted(gen, startedOn)) return;
       const text = [r && r.brand, r && r.model].filter(Boolean).join(' ');
       const parsed: LaceSpec = text ? parseLace(text) : {};
       const patch: Partial<LaceSpec> = {};
@@ -147,15 +181,16 @@ export function LaceWizard({ draft, setDraft, onSave, onClose, ai, aiImg, onAiEr
           if (cur[k] === before[k]) Object.assign(keep, { [k]: patch[k] });
         }
         return keep;
-      });
+      }, startedOn);
       setNote(
         `Claude (${(r && r.confidence) || 'unsure'}): ${text || 'model unclear'}${p ? ', ' + p + ' eyelet pairs' : ''}. Count them yourself before you buy.`,
       );
     } catch (e) {
+      if (!stillWanted(gen, startedOn)) return;
       setNote(aiErr(e));
       onAiError(e);
     } finally {
-      setBusy('');
+      if (gen === reqRef.current) setBusy('');
       if (fileRef.current) fileRef.current.value = '';
     }
   }
