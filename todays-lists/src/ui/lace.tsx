@@ -75,18 +75,33 @@ export function LaceWizard({ draft, setDraft, onSave, onClose, ai, aiImg, onAiEr
   useEffect(() => {
     draftRef.current = draft;
   }, [draft]);
+  // Unmounting (the wizard closed, or reopened on another pair) invalidates every pending request, so an
+  // answer cannot land on a later draft that happens to carry the same text and shoe.
+  useEffect(
+    () => () => {
+      reqRef.current++;
+    },
+    [],
+  );
+  /** True when a request is still the latest one and about the pair in `cur`. */
+  const stillWanted = (gen: number, startedOn: LaceDraft, cur: LaceDraft | null = draftRef.current) =>
+    gen === reqRef.current && !!cur && samePair(cur, startedOn);
+  /** A finished request nobody wants any more: drop its loading note unless a newer request owns it. */
+  const discard = (gen: number) => {
+    if (gen === reqRef.current) setNote('');
+  };
   // Functional update: patch the latest draft, not the one captured when the call started, so edits
-  // made in the meantime survive. With `startedOn`, the patch applies only while it is still the same
-  // pair and shoe; a closed wizard (null draft) stays closed.
-  const set = (patch: Partial<LaceSpec> | ((cur: LaceSpec) => Partial<LaceSpec>), startedOn?: LaceDraft) =>
+  // made in the meantime survive. With `pending`, the patch applies only while that request is still
+  // the latest and it is still the same pair and shoe; a closed wizard (null draft) stays closed.
+  const set = (
+    patch: Partial<LaceSpec> | ((cur: LaceSpec) => Partial<LaceSpec>),
+    pending?: { gen: number; startedOn: LaceDraft },
+  ) =>
     setDraft((prev) => {
-      if (!prev || (startedOn && !samePair(prev, startedOn))) return prev;
+      if (!prev || (pending && !stillWanted(pending.gen, pending.startedOn, prev))) return prev;
       const p = typeof patch === 'function' ? patch(prev.spec) : patch;
       return { ...prev, spec: { ...prev.spec, ...p } };
     });
-  /** True when a finished request is still the latest one and about the pair on screen. */
-  const stillWanted = (gen: number, startedOn: LaceDraft) =>
-    gen === reqRef.current && samePair(draftRef.current, startedOn);
   const sizeM = spec.size ? (spec.sizeSys === 'W' ? spec.size - 1.5 : spec.size) : null;
   const guess = m && !m.noLaces ? m.pairs(sizeM) : spec.aiPairs || 0;
   const pairs = spec.eyelets || guess || 0;
@@ -110,28 +125,31 @@ export function LaceWizard({ draft, setDraft, onSave, onClose, ai, aiImg, onAiEr
           modelTier: 'quick',
         },
       );
-      if (!stillWanted(gen, startedOn)) return;
+      if (!stillWanted(gen, startedOn)) return discard(gen);
       const ep = Number(r?.eyeletPairs);
       const p = ep > 0 && ep < 15 ? Math.round(ep) : null;
       const sl = Number(r?.stockLaceInches);
       const len = sl >= 18 && sl <= 100 ? Math.round(sl) : null;
       const lt = asLaceType(r?.laceType);
-      set((cur) => {
-        // only fill fields the user has not set by now
-        const patch: Partial<LaceSpec> = {};
-        if (p) {
-          patch.aiPairs = p;
-          if (!cur.eyelets) patch.eyelets = p;
-        }
-        if (len) patch.aiStock = len;
-        if (lt && !cur.laceType) patch.laceType = lt;
-        return patch;
-      }, startedOn);
+      set(
+        (cur) => {
+          // only fill fields the user has not set by now
+          const patch: Partial<LaceSpec> = {};
+          if (p) {
+            patch.aiPairs = p;
+            if (!cur.eyelets) patch.eyelets = p;
+          }
+          if (len) patch.aiStock = len;
+          if (lt && !cur.laceType) patch.laceType = lt;
+          return patch;
+        },
+        { gen, startedOn },
+      );
       setNote(
         `Claude (${(r && r.confidence) || 'unsure'}): ${p ? p + ' eyelet pairs' : 'eyelet count unknown'}${len ? ', ships with ' + len + '″ laces' : ''}. ${(r && r.note) || ''}`,
       );
     } catch (e) {
-      if (!stillWanted(gen, startedOn)) return;
+      if (!stillWanted(gen, startedOn)) return discard(gen);
       setNote(aiErr(e));
       onAiError(e);
     } finally {
@@ -154,7 +172,7 @@ export function LaceWizard({ draft, setDraft, onSave, onClose, ai, aiImg, onAiEr
           modelTier: 'default',
         },
       );
-      if (!stillWanted(gen, startedOn)) return;
+      if (!stillWanted(gen, startedOn)) return discard(gen);
       const text = [r && r.brand, r && r.model].filter(Boolean).join(' ');
       const parsed: LaceSpec = text ? parseLace(text) : {};
       const patch: Partial<LaceSpec> = {};
@@ -173,20 +191,23 @@ export function LaceWizard({ draft, setDraft, onSave, onClose, ai, aiImg, onAiEr
       const lt = asLaceType(r?.laceType);
       if (lt) patch.laceType = lt;
       if (r && r.laceColor && !before.color) patch.color = cap1(String(r.laceColor));
-      set((cur) => {
-        // The photo may replace what the form held when it was sent, but never a field the user has
-        // changed since then.
-        const keep: Partial<LaceSpec> = {};
-        for (const k of Object.keys(patch) as (keyof LaceSpec)[]) {
-          if (cur[k] === before[k]) Object.assign(keep, { [k]: patch[k] });
-        }
-        return keep;
-      }, startedOn);
+      set(
+        (cur) => {
+          // The photo may replace what the form held when it was sent, but never a field the user has
+          // changed since then.
+          const keep: Partial<LaceSpec> = {};
+          for (const k of Object.keys(patch) as (keyof LaceSpec)[]) {
+            if (cur[k] === before[k]) Object.assign(keep, { [k]: patch[k] });
+          }
+          return keep;
+        },
+        { gen, startedOn },
+      );
       setNote(
         `Claude (${(r && r.confidence) || 'unsure'}): ${text || 'model unclear'}${p ? ', ' + p + ' eyelet pairs' : ''}. Count them yourself before you buy.`,
       );
     } catch (e) {
-      if (!stillWanted(gen, startedOn)) return;
+      if (!stillWanted(gen, startedOn)) return discard(gen);
       setNote(aiErr(e));
       onAiError(e);
     } finally {
