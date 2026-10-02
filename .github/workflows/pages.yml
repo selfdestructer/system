@@ -3,16 +3,16 @@ name: Today's Lists
 on:
   push:
     branches: [main]
-    paths: ['todays-lists/**', '.github/workflows/pages.yml']
+    paths: ['todays-lists/**']
   pull_request:
-    paths: ['todays-lists/**', '.github/workflows/pages.yml']
+    paths: ['todays-lists/**']
   workflow_dispatch:
 
 permissions:
   contents: read
 
 concurrency:
-  group: pages
+  group: todays-lists
   cancel-in-progress: false
 
 defaults:
@@ -32,20 +32,3 @@ jobs:
       - run: npm ci
       - run: npm run check
       - run: npm run build
-      - uses: actions/upload-pages-artifact@v3
-        with:
-          path: todays-lists/dist
-
-  deploy:
-    if: github.event_name != 'pull_request'
-    needs: check
-    runs-on: ubuntu-latest
-    permissions:
-      pages: write
-      id-token: write
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    steps:
-      - id: deployment
-        uses: actions/deploy-pages@v4
