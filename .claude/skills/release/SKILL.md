@@ -22,7 +22,7 @@ The artifact at https://claude.ai/artifact/2vpRHGw68JBcwCwbXxWuTK is the preview
 1. **Check.** In `todays-lists/`: `npm run check`. Fix anything red; never skip or disable a test to get green.
 2. **Build both outputs.**
    ```bash
-   npm run build          # dist/        (Pages / any static host)
+   npm run build          # dist/        (any static host)
    npm run build:single   # dist-single/index.html (artifact preview)
    ```
 3. **Smoke-test `dist/`.** `npm run preview` (or Playwright against it): header animates, the four seed pairs show 36 / 54 / 36 / 36, adding "Vans Old Skool white 8 eyelets size 10" gives 54″ instantly, Find local stock lists stores, Plan route orders a loop, a reload keeps the list.

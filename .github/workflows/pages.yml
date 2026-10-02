@@ -3,9 +3,9 @@ name: Today's Lists
 on:
   push:
     branches: [main]
-    paths: ['todays-lists/**']
+    paths: ['todays-lists/**', '.github/workflows/pages.yml']
   pull_request:
-    paths: ['todays-lists/**']
+    paths: ['todays-lists/**', '.github/workflows/pages.yml']
   workflow_dispatch:
 
 permissions:
