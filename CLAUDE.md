@@ -22,7 +22,7 @@ npm run check          # typecheck + lint + prettier --check + tests (run before
 npm test               # vitest run
 npm run lint           # eslint src
 npm run format         # prettier --write
-npm run build          # dist/ for GitHub Pages or any static host
+npm run build          # dist/ for any static host
 npm run build:single   # dist-single/index.html for the artifact preview
 ```
 
@@ -59,4 +59,4 @@ todays-lists/src/
 
 - `/add-part-calculator`: a new kind of item needs its own "what exactly do I buy" logic.
 - `/refresh-store-data`: pull or update stores from OpenStreetMap or All The Places.
-- `/release`: check, build, republish the artifact preview, push, deploy.
+- `/release`: check, build, republish the artifact preview, push.

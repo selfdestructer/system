@@ -45,7 +45,7 @@ npm run preview      # serves dist/ locally to check the production build
 npm run build:single # → dist-single/index.html, one self-contained file (the artifact preview)
 ```
 
-`dist/` uses relative paths, so it runs from any folder on an HTTP host (GitHub Pages, Netlify, `npm run preview`, `npx serve dist`). It will not run opened straight from `file://`, because the module script is blocked there; `dist-single/index.html` is the one that works as a plain file. Pushing to `main` deploys `dist/` to GitHub Pages through `.github/workflows/pages.yml` once Pages is enabled for the repo (Settings → Pages → Source: GitHub Actions).
+`dist/` uses relative paths, so it runs from any folder on an HTTP host (Netlify, `npm run preview`, `npx serve dist`). It will not run opened straight from `file://`, because the module script is blocked there; `dist-single/index.html` is the one that works as a plain file.
 
 ## Checks
 
